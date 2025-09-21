@@ -1,0 +1,7 @@
+
+web_user: webapp
+site_path: /opt/static-site
+server_name: _
+nginx_port: "80"
+
+http_test_path: /

@@ -1,0 +1,160 @@
+
+- name: Install required packages
+  apt:
+    name:
+      - nginx
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+    state: present
+    update_cache: yes
+
+- name: Ensure web user exists
+  user:
+    name: "{{ web_user }}"
+    state: present
+    shell: /bin/bash
+    create_home: yes
+
+- name: Ensure /opt/static-site exists
+  file:
+    path: "{{ site_path }}"
+    state: directory
+    owner: "{{ web_user }}"
+    group: "{{ web_user }}"
+    mode: '0755'
+
+- name: Deploy index.html template
+  template:
+    src: index.html.j2
+    dest: "{{ site_path }}/index.html"
+    owner: "{{ web_user }}"
+    group: "{{ web_user }}"
+    mode: '0644'
+  notify: Reload NGINX
+
+- name: Deploy main nginx.conf
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload NGINX
+
+- name: Deploy custom NGINX configuration
+  template:
+    src: custom_site.conf.j2
+    dest: /etc/nginx/sites-available/custom_site.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload NGINX
+
+- name: Enable custom site
+  file:
+    src: /etc/nginx/sites-available/custom_site.conf
+    dest: /etc/nginx/sites-enabled/custom_site.conf
+    state: link
+  notify: Reload NGINX
+
+- name: Disable default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload NGINX
+
+
+- name: Ensure NGINX is started and enabled
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+
+
+- name: Configure UFW Firewall
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "22"
+    - "{{ nginx_port }}"
+
+- name: Set default incoming policy to deny
+  ufw:
+    direction: incoming
+    default: deny
+
+- name: Ensure UFW is enabled
+  ufw:
+    state: enabled
+
+
+- name: Disable root SSH login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PermitRootLogin'
+    line: 'PermitRootLogin no'
+    state: present
+  notify: Restart ssh
+
+- name: Allow only SSH key authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PasswordAuthentication'
+    line: 'PasswordAuthentication no'
+    state: present
+  notify: Restart ssh
+
+- name: Ensure public key authentication is enabled
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^PubkeyAuthentication'
+    line: 'PubkeyAuthentication yes'
+    state: present
+  notify: Restart ssh
+
+
+- name: Enable automatic security updates
+  lineinfile:
+    path: /etc/apt/apt.conf.d/20auto-upgrades
+    regexp: '^APT::Periodic::Unattended-Upgrade'
+    line: 'APT::Periodic::Unattended-Upgrade "1";'
+    create: yes
+
+- name: Ensure fail2ban is running and enabled
+  service:
+    name: fail2ban
+    state: started
+    enabled: yes
+
+- name: Configure fail2ban for SSH
+  copy:
+    dest: /etc/fail2ban/jail.local
+    content: |
+      [sshd]
+      enabled = true
+      port = 22
+      filter = sshd
+      logpath = /var/log/auth.log
+      maxretry = 5
+      bantime = 600
+  notify: Restart fail2ban
+
+- meta: flush_handlers
+
+- name: Verify webserver functionality
+  ansible.builtin.uri:
+    url: "http://localhost"   
+    return_content: yes       
+    status_code: 200          
+  register: web_response
+
+- name: Verify web response
+  ansible.builtin.assert:
+    that:
+      - "'Hello from Ansible-managed NGINX!' in web_response.content"
+    fail_msg: "Wrong content of the web page"
+    success_msg: "Web server is working"
+

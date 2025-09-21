@@ -1,0 +1,25 @@
+
+- name: Restart NGINX
+  service:
+    name: nginx
+    state: restarted
+
+
+- name: Restart ssh
+  service:
+    name: ssh
+    state: restarted
+
+
+
+- name: Restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted
+
+
+- name: Reload NGINX
+  service:
+    name: nginx
+    state: reloaded
+  listen: Reload NGINX

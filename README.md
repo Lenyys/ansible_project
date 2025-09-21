@@ -13,17 +13,17 @@ This project provisions and configures an **Nginx web server** using **Ansible**
 ```bash
 git clone https://github.com/Lenyys/ansible_project.git
 cd ansible_project
-
+```
 - Start and provision the virtual machine:
 
 ```bash
 vagrant up
-
+```
 - Connect to the VM
 
 ```bash
 vagrant ssh
-
+```
 - Run Ansible playbook:
 
 ```bash
@@ -34,3 +34,4 @@ ansible-playbook -i /vagrant/inventory /vagrant/playbooks/site.yml
 
 
 ## now you can run http://localhost:8080 in your browser
+

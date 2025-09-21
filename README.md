@@ -19,20 +19,18 @@ cd ansible_project
 ```bash
 vagrant up
 
-```
 - Connect to the VM
 
 ```bash
 vagrant ssh
 
-```
-
-3. Run Ansible playbook:
+- Run Ansible playbook:
 
 ```bash
 ansible-playbook -i /vagrant/inventory /vagrant/playbooks/site.yml
 
 ```
+
 
 
 ## now you can run http://localhost:8080 in your browser
